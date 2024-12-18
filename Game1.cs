@@ -6,6 +6,10 @@ namespace CSharpSimplePhysicsEngine
 {
     public class Game1 : Game
     {
+
+        Texture2D ballTexture;
+        Vector2 ballPosition;
+        float ballSpeed;
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
@@ -19,15 +23,22 @@ namespace CSharpSimplePhysicsEngine
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
+            ballPosition = new Vector2(_graphics.PreferredBackBufferWidth / 2,
+                                       _graphics.PreferredBackBufferHeight / 2);
+            ballSpeed = 100f;
 
             base.Initialize();
+
         }
 
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+
+
             // TODO: use this.Content to load your game content here
+            ballTexture = Content.Load<Texture2D>("testball");
         }
 
         protected override void Update(GameTime gameTime)
@@ -44,9 +55,17 @@ namespace CSharpSimplePhysicsEngine
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            // TODO: Add your drawing code here
+
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(ballTexture, ballPosition, Color.White);
+
+            _spriteBatch.End();
+           
+
 
             base.Draw(gameTime);
+
         }
+
     }
 }
