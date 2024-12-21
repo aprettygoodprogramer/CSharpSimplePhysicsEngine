@@ -1,25 +1,29 @@
 ﻿using Microsoft.Xna.Framework.Graphics;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 
 namespace CSharpSimplePhysicsEngine
 {
-    class RectangleObject : Object
+    class RectangleObject
     {
-        //private Microsoft.Xna.Framework.Vector2 size;
-
+        public Vector2 Position { get; set; }
         public Vector2 Size { get; set; }
+        public Texture2D Texture { get; set; }
 
-        public RectangleObject(Microsoft.Xna.Framework.Vector2 position, Texture2D texture)
-            : base(position, texture)
+        public Vector2 Vel { get; set; }
+
+
+        public Rectangle BoundingBox => new Rectangle(
+            (int)Position.X,
+            (int)Position.Y,
+            (int)Size.X,
+            (int)Size.Y
+        );
+
+        public RectangleObject(Vector2 position, Texture2D texture)
         {
-            
+            Position = position;
+            Texture = texture;
+            Size = new Vector2(50, 100); 
         }
-
-
     }
 }

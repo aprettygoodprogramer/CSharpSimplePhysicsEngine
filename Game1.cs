@@ -11,15 +11,9 @@ namespace CSharpSimplePhysicsEngine
         Texture2D ballTexture;
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-        private float scaleFactor;
-        private Vector2 currentPositition;
-        private Object _object;
         private List<RectangleObject> rectangleObjects;
-        private RectangleObject RectangleTest;
-        private Vector2 Size;
-        private Microsoft.Xna.Framework.Vector2 Position;
         private MouseState _previousMouseState;
-        private Vector2 MousePos;
+        private Vector2 gravity = new Vector2(0, 980f);
         public Game1()
         {
             this.TargetElapsedTime = TimeSpan.FromSeconds(1d / 60d);
@@ -31,30 +25,14 @@ namespace CSharpSimplePhysicsEngine
         protected override void Initialize()
         {
             rectangleObjects = new List<RectangleObject>();
-            Size.X = 100;
-            Size.Y = 100;
-            Position.X = 200;
-            Position.Y = 200;
-            // Initialize any logic-related variables
-            currentPositition = new Vector2(100, 100); // Example initial position
-            scaleFactor = 1.0f; // Example scale factor
             base.Initialize();
-            RectangleTest = new RectangleObject(Position, ballTexture);
-            rectangleObjects.Add(RectangleTest);
         }
 
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            // Load the texture for the ball
             ballTexture = Content.Load<Texture2D>("recktangle");
-
-            // Ensure currentPositition is properly initialized
-            currentPositition = new Vector2(100, 100);
-
-            // Initialize the Object instance
-            _object = new Object(currentPositition, ballTexture);
         }
 
         protected override void Update(GameTime gameTime)
@@ -67,15 +45,37 @@ namespace CSharpSimplePhysicsEngine
             if (currentMouseState.LeftButton == ButtonState.Pressed &&
                 _previousMouseState.LeftButton == ButtonState.Released)
             {
-                MousePos.X = Mouse.GetState().X;
-                MousePos.Y = Mouse.GetState().Y;
+                Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
 
-                RectangleTest = new RectangleObject(MousePos, ballTexture);
-                rectangleObjects.Add(RectangleTest);
+                Rectangle newRectangle = new Rectangle((int)mousePos.X, (int)mousePos.Y, 50, 100);
 
+                bool overlaps = false;
+                foreach (var obj in rectangleObjects)
+                {
+
+                    if (newRectangle.Intersects(obj.BoundingBox))
+                    {
+                        overlaps = true;
+                        break;
+                    }
+                }
+
+                if (!overlaps)
+                {
+                    rectangleObjects.Add(new RectangleObject(mousePos, ballTexture));
+                }
             }
 
-            _previousMouseState = currentMouseState;
+            foreach (var obj in rectangleObjects)
+            {
+                obj.Vel += gravity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                obj.Position += obj.Vel * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                if (obj.Position.Y + obj.Size.Y > 500)
+                {
+                    obj.Position = new Vector2(obj.Position.X, 500 - obj.Size.Y);
+                    obj.Vel = new Vector2(obj.Vel.X, 0);
+                }
+            }
 
             base.Update(gameTime);
         }
@@ -86,12 +86,10 @@ namespace CSharpSimplePhysicsEngine
 
             _spriteBatch.Begin();
 
-            //_spriteBatch.Draw(ballTexture, new Rectangle(200, 100, 50, 100), Color.White);
-            foreach (Object obj in rectangleObjects)
+            foreach (var obj in rectangleObjects)
             {
-                _spriteBatch.Draw(ballTexture, new Rectangle((int)obj.position.X, (int)obj.position.Y, 50, 100), Color.White);
+                _spriteBatch.Draw(obj.Texture, obj.BoundingBox, Color.White);
             }
-
 
             _spriteBatch.End();
 
