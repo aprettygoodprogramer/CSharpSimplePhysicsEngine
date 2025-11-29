@@ -25,9 +25,13 @@ namespace CSharpSimplePhysicsEngine
         public Texture2D Texture;
         public Color Color;
         public Vector2[] Vertices = new Vector2[4];
+        public enum ObjectType {Circle, Rectangle }
+        public ObjectType ShapeType;
+        public float Radius;
 
         public PhysicsObject(Vector2 position, Vector2 size, Texture2D texture, float mass)
         {
+            ShapeType = ObjectType.Rectangle;
             Position = position;
             Size = size;
             Texture = texture;
@@ -53,6 +57,37 @@ namespace CSharpSimplePhysicsEngine
             float t = MathHelper.Clamp((mass - 1) / 20f, 0f, 1f);
             Color = Color.Lerp(Color.White, Color.Red, t);
         }
+        public PhysicsObject(Vector2 position, float radius, Texture2D texture, float mass)
+        {
+            ShapeType = ObjectType.Circle; 
+            Position = position;
+            Radius = radius;
+
+            Size = new Vector2(radius * 2, radius * 2);
+
+            Texture = texture;
+            Mass = mass;
+
+            if (mass != 0)
+            {
+                InverseMass = 1.0f / mass;
+                Inertia = 0.5f * mass * (radius * radius);
+                InverseInertia = 1.0f / Inertia;
+            }
+            else
+            {
+                InverseMass = 0.0f;
+                InverseInertia = 0.0f;
+            }
+
+            Velocity = Vector2.Zero;
+            Angle = 0.0f;
+            AngularVelocity = 0.0f;
+
+            float t = MathHelper.Clamp((mass - 1) / 20f, 0f, 1f);
+            Color = Color.Lerp(Color.White, Color.Red, t);
+        }
+
 
         public void UpdateVertices()
         {
