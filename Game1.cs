@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace CSharpSimplePhysicsEngine
 {
@@ -11,12 +12,17 @@ namespace CSharpSimplePhysicsEngine
         public static SpriteBatch SpriteBatchInstance;
 
         private Texture2D ballTexture;
+        private Texture2D CircleTexture;
         private SpriteFont uiFont;
         private PhysicsWorld world;
         private MouseState _prevMouse;
 
         private float spawnMass = 5.0f;
         private float spawnSize = 50.0f;
+
+        private float spwanRadius = 25.0f;
+        private bool isSpwanCircle = false;
+
         private bool showUI = true;
         private bool isPaused = false;
 
@@ -57,6 +63,24 @@ namespace CSharpSimplePhysicsEngine
             {
                 SimpleUI.Load(GraphicsDevice, null); 
             }
+
+
+            int diameter = 64;
+            CircleTexture = new Texture2D(GraphicsDevice, diameter, diameter);
+            Color[] data  = new Color[diameter * diameter];
+            float radius = diameter / 2f;
+            float center = diameter / 2f;
+            for (int y = 0; y < diameter; y++)
+            {
+                for (int x = 0; x < diameter; x++)
+                {
+                    // Check distance from center
+                    float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                    if (dist <= radius) data[y * diameter + x] = Color.White;
+                    else data[y * diameter + x] = Color.Transparent;
+                }
+            }
+            CircleTexture.SetData(data);
         }
 
         protected override void Update(GameTime gameTime)
@@ -77,10 +101,21 @@ namespace CSharpSimplePhysicsEngine
                 _prevMouse.LeftButton == ButtonState.Released &&
                 mouse.X < 800)
             {
+
                 Vector2 pos = new Vector2(mouse.X, mouse.Y);
-                Vector2 size = new Vector2(spawnSize, spawnSize * 2);
-                var obj = new PhysicsObject(pos, size, ballTexture, spawnMass);
-                world.AddObject(obj);
+                if (isSpwanCircle == true)
+                {
+                    var obj = new PhysicsObject(pos, spwanRadius, CircleTexture, spawnMass);
+                    world.AddObject(obj);
+                    
+                }
+                else
+                {
+                    Vector2 size = new Vector2(spawnSize, spawnSize * 2);
+                    var obj = new PhysicsObject(pos, size, ballTexture, spawnMass);
+                    world.AddObject(obj);
+                }
+
             }
 
             if (Keyboard.GetState().IsKeyDown(Keys.H) && _prevKey.IsKeyUp(Keys.H)) showUI = !showUI;
@@ -141,7 +176,14 @@ namespace CSharpSimplePhysicsEngine
             spawnMass = SimpleUI.Slider(new Rectangle(panelX + 10, startY, 200, 20), "Spawn Mass", spawnMass, 1, 100);
             startY += gap;
 
-            spawnSize = SimpleUI.Slider(new Rectangle(panelX + 10, startY, 200, 20), "Spawn Size", spawnSize, 20, 150);
+            if (isSpwanCircle)
+            {
+                spwanRadius = SimpleUI.Slider(new Rectangle(panelX + 10, startY, 200, 20), "Radius", spwanRadius, 10, 100);
+            }
+            else
+            {
+                spawnSize = SimpleUI.Slider(new Rectangle(panelX + 10, startY, 200, 20), "Box Size", spawnSize, 20, 150);
+            }
             startY += gap;
 
             float iter = SimpleUI.Slider(new Rectangle(panelX + 10, startY, 200, 20), "Accuracy (Iter)", world.Iterations, 1, 30);
@@ -158,7 +200,12 @@ namespace CSharpSimplePhysicsEngine
                 world.Clear();
             }
             startY += 50;
-
+                        string shapeText = isSpwanCircle ? "Spawn Shape: Circle" : "Spawn Shape: Rectangle";
+            if (SimpleUI.Button(new Rectangle(panelX + 10, startY, 200, 40), shapeText))
+            {
+                isSpwanCircle = !isSpwanCircle;
+            }
+            startY += 50;
             string pauseText = isPaused ? "RESUME" : "PAUSE";
             if (SimpleUI.Button(new Rectangle(panelX + 10, startY, 200, 40), pauseText))
             {
