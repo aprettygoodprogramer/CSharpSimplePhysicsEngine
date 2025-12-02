@@ -28,7 +28,7 @@ namespace CSharpSimplePhysicsEngine
         public enum ObjectType {Circle, Rectangle }
         public ObjectType ShapeType;
         public float Radius;
-
+        //box
         public PhysicsObject(Vector2 position, Vector2 size, Texture2D texture, float mass)
         {
             ShapeType = ObjectType.Rectangle;
@@ -57,6 +57,7 @@ namespace CSharpSimplePhysicsEngine
             float t = MathHelper.Clamp((mass - 1) / 20f, 0f, 1f);
             Color = Color.Lerp(Color.White, Color.Red, t);
         }
+        //circle
         public PhysicsObject(Vector2 position, float radius, Texture2D texture, float mass)
         {
             ShapeType = ObjectType.Circle; 

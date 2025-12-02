@@ -31,6 +31,7 @@ namespace CSharpSimplePhysicsEngine
             ScreenWidth = screenWidth;
             GroundHeight = groundHeight;
 
+            // Floor is a static rectangle
             Vector2 floorSize = new Vector2(screenWidth * 10, 1000);
             Vector2 floorPos = new Vector2(screenWidth / 2, groundHeight + (floorSize.Y / 2));
             Floor = new PhysicsObject(floorPos, floorSize, null, 0f);
@@ -58,23 +59,25 @@ namespace CSharpSimplePhysicsEngine
 
                     obj.UpdateVertices();
 
-                    if (CheckCollisionSAT(obj, Floor, out CollisionManifold m))
+
+                    if (CheckCollision(obj, Floor, out CollisionManifold m))
                     {
                         ResolveCollision(m);
                     }
 
+                    // Screen Bounds
                     if (obj.Position.X < 0) { obj.Position.X = 0; obj.Velocity.X *= -0.5f; }
-                    // Limit to 800 because UI is on the right
                     if (obj.Position.X > 800) { obj.Position.X = 800; obj.Velocity.X *= -0.5f; }
                 }
 
+               
                 for (int k = 0; k < Iterations; k++)
                 {
                     for (int i = 0; i < Objects.Count; i++)
                     {
                         for (int j = i + 1; j < Objects.Count; j++)
                         {
-                            if (CheckCollisionSAT(Objects[i], Objects[j], out CollisionManifold m))
+                            if (CheckCollision(Objects[i], Objects[j], out CollisionManifold m))
                             {
                                 ResolveCollision(m);
                             }
@@ -84,7 +87,57 @@ namespace CSharpSimplePhysicsEngine
             }
         }
 
-        private bool CheckCollisionSAT(PhysicsObject A, PhysicsObject B, out CollisionManifold manifold)
+        private bool CheckCollision(PhysicsObject A, PhysicsObject B, out CollisionManifold manifold)
+        {
+            // Default init
+            manifold = new CollisionManifold { A = A, B = B };
+
+            if (A.ShapeType == PhysicsObject.ObjectType.Circle && B.ShapeType == PhysicsObject.ObjectType.Circle)
+            {
+                return IntersectCircles(A, B, out manifold);
+            }
+            else if (A.ShapeType == PhysicsObject.ObjectType.Rectangle && B.ShapeType == PhysicsObject.ObjectType.Rectangle)
+            {
+                return IntersectPolygons(A, B, out manifold);
+            }
+            else if (A.ShapeType == PhysicsObject.ObjectType.Rectangle && B.ShapeType == PhysicsObject.ObjectType.Circle)
+            {
+                // Box vs Circle
+                return IntersectCirclePolygon(B, A, out manifold);
+            }
+            else if (A.ShapeType == PhysicsObject.ObjectType.Circle && B.ShapeType == PhysicsObject.ObjectType.Rectangle)
+            {
+                // Circle vs Box
+                return IntersectCirclePolygon(A, B, out manifold);
+            }
+
+            return false;
+        }
+
+        private bool IntersectCircles(PhysicsObject A, PhysicsObject B, out CollisionManifold m)
+        {
+            m = new CollisionManifold { A = A, B = B };
+
+            Vector2 diff = B.Position - A.Position;
+            float distSq = diff.LengthSquared();
+            float radiusSum = A.Radius + B.Radius;
+
+            if (distSq >= radiusSum * radiusSum) return false;
+
+            float dist = (float)Math.Sqrt(distSq);
+
+            Vector2 normal;
+            if (dist == 0.0f) normal = Vector2.UnitY;
+            else normal = diff / dist;
+
+            m.Normal = normal;
+            m.Depth = radiusSum - dist;
+            m.Contact1 = A.Position + (normal * A.Radius);
+
+            return true;
+        }
+
+        private bool IntersectPolygons(PhysicsObject A, PhysicsObject B, out CollisionManifold manifold)
         {
             manifold = new CollisionManifold { A = A, B = B };
             Vector2 normal = Vector2.Zero;
@@ -118,7 +171,6 @@ namespace CSharpSimplePhysicsEngine
             manifold.Normal = normal;
             manifold.Depth = minDepth;
 
-            // Find Exact Contact Point (Corner)
             PhysicsObject incidentObj = (bestAxisIndex < 2) ? B : A;
             Vector2 searchDirection = (bestAxisIndex < 2) ? -normal : normal;
             Vector2 bestVertex = incidentObj.Vertices[0];
@@ -138,6 +190,82 @@ namespace CSharpSimplePhysicsEngine
             return true;
         }
 
+        private bool IntersectCirclePolygon(PhysicsObject circle, PhysicsObject poly, out CollisionManifold m)
+        {
+            m = new CollisionManifold { A = circle, B = poly };
+
+
+            Vector2 center = circle.Position;
+            Vector2 relCenter = center - poly.Position;
+
+            float ang = -poly.Angle;
+            float s = (float)Math.Sin(ang);
+            float c = (float)Math.Cos(ang);
+
+            // Manual rotation matrix
+            Vector2 localCenter = new Vector2(
+                relCenter.X * c - relCenter.Y * s,
+                relCenter.X * s + relCenter.Y * c
+            );
+
+            Vector2 halfSize = poly.Size / 2f;
+            Vector2 closestLocal = Vector2.Clamp(localCenter, -halfSize, halfSize);
+
+            Vector2 distanceVec = localCenter - closestLocal;
+            float distSq = distanceVec.LengthSquared();
+            float r = circle.Radius;
+
+            if (distSq > r * r) return false;
+
+            float dist = (float)Math.Sqrt(distSq);
+            Vector2 normalLocal;
+
+            if (dist < 0.0001f)
+            {
+                float dX = halfSize.X - Math.Abs(localCenter.X);
+                float dY = halfSize.Y - Math.Abs(localCenter.Y);
+
+                if (dX < dY)
+                {
+                    m.Depth = dX + r;
+                    normalLocal = localCenter.X < 0 ? new Vector2(-1, 0) : new Vector2(1, 0);
+                    closestLocal.X = localCenter.X < 0 ? -halfSize.X : halfSize.X;
+                }
+                else
+                {
+                    m.Depth = dY + r;
+                    normalLocal = localCenter.Y < 0 ? new Vector2(0, -1) : new Vector2(0, 1);
+                    closestLocal.Y = localCenter.Y < 0 ? -halfSize.Y : halfSize.Y;
+                }
+            }
+            else
+            {
+                m.Depth = r - dist;
+                normalLocal = distanceVec / dist; 
+            }
+
+
+            ang = poly.Angle;
+            s = (float)Math.Sin(ang);
+            c = (float)Math.Cos(ang);
+
+            Vector2 normalWorld = new Vector2(
+                normalLocal.X * c - normalLocal.Y * s,
+                normalLocal.X * s + normalLocal.Y * c
+            );
+
+            Vector2 contactLocalRotated = new Vector2(
+                closestLocal.X * c - closestLocal.Y * s,
+                closestLocal.X * s + closestLocal.Y * c
+            );
+
+            m.Normal = -normalWorld; 
+            m.Contact1 = poly.Position + contactLocalRotated;
+
+            return true;
+        }
+
+  
         private void ProjectVertices(Vector2[] vertices, Vector2 axis, out float min, out float max)
         {
             min = float.MaxValue;
