@@ -302,10 +302,9 @@ namespace CSharpSimplePhysicsEngine
                          (A.Velocity + new Vector2(-A.AngularVelocity * rA.Y, A.AngularVelocity * rA.X));
 
             float velAlongNormal = Vector2.Dot(rv, normal);
+
             if (velAlongNormal > 0) return;
 
-            float e = Math.Min(A.Restitution, B.Restitution);
-            if (velAlongNormal > -120.0f) e = 0.0f; // Resting threshold
 
             float raCrossN = rA.X * normal.Y - rA.Y * normal.X;
             float rbCrossN = rB.X * normal.Y - rB.Y * normal.X;
@@ -313,10 +312,14 @@ namespace CSharpSimplePhysicsEngine
                                (raCrossN * raCrossN) * A.InverseInertia +
                                (rbCrossN * rbCrossN) * B.InverseInertia;
 
+            float e = Math.Min(A.Restitution, B.Restitution);
+            if (velAlongNormal > -120.0f) e = 0.0f; 
+
             float j = -(1 + e) * velAlongNormal;
             j /= invMassSum;
 
             Vector2 impulse = j * normal;
+
 
             if (A.InverseMass > 0)
             {
@@ -329,18 +332,32 @@ namespace CSharpSimplePhysicsEngine
                 B.AngularVelocity += B.InverseInertia * (rB.X * impulse.Y - rB.Y * impulse.X);
             }
 
-            // 3. Friction
-            Vector2 tangent = rv - (velAlongNormal * normal);
+
+            rv = B.Velocity + new Vector2(-B.AngularVelocity * rB.Y, B.AngularVelocity * rB.X) -
+                 (A.Velocity + new Vector2(-A.AngularVelocity * rA.Y, A.AngularVelocity * rA.X));
+
+            Vector2 tangent = rv - (Vector2.Dot(rv, normal) * normal);
+
             if (tangent.LengthSquared() > 0.0001f)
             {
                 tangent.Normalize();
+
+                float raCrossT = rA.X * tangent.Y - rA.Y * tangent.X;
+                float rbCrossT = rB.X * tangent.Y - rB.Y * tangent.X;
+                float invMassSumT = A.InverseMass + B.InverseMass +
+                                    (raCrossT * raCrossT) * A.InverseInertia +
+                                    (rbCrossT * rbCrossT) * B.InverseInertia;
+
                 float jt = -Vector2.Dot(rv, tangent);
-                jt /= invMassSum;
+                jt /= invMassSumT; 
+
                 float mu = (float)Math.Sqrt(A.Friction * A.Friction + B.Friction * B.Friction);
 
                 Vector2 frictionImpulse;
-                if (Math.Abs(jt) < j * mu) frictionImpulse = jt * tangent;
-                else frictionImpulse = -j * mu * tangent;
+                if (Math.Abs(jt) < j * mu)
+                    frictionImpulse = jt * tangent; 
+                else
+                    frictionImpulse = -j * mu * tangent; 
 
                 if (A.InverseMass > 0)
                 {
